@@ -1,4 +1,4 @@
-defmodule ArmNxPrimitives.Embeddings do
+defmodule NxPrimitives.Embeddings do
   @moduledoc """
   On-device semantic search building blocks.
 
@@ -16,13 +16,13 @@ defmodule ArmNxPrimitives.Embeddings do
 
       # Index time (run once, persist `corpus_norm`):
       corpus = encode_docs(...)                        # {n, d} f32
-      corpus_norm = ArmNxPrimitives.Embeddings.l2_normalize(corpus)
+      corpus_norm = NxPrimitives.Embeddings.l2_normalize(corpus)
 
       # Query time:
       q = encode_query("...")                          # {d} f32
-      q_norm = ArmNxPrimitives.Embeddings.l2_normalize(q)
-      scores = ArmNxPrimitives.Embeddings.cosine_similarity(q_norm, corpus_norm)
-      top_5 = ArmNxPrimitives.Embeddings.top_k(scores, 5)
+      q_norm = NxPrimitives.Embeddings.l2_normalize(q)
+      scores = NxPrimitives.Embeddings.cosine_similarity(q_norm, corpus_norm)
+      top_5 = NxPrimitives.Embeddings.top_k(scores, 5)
   """
 
   @doc """

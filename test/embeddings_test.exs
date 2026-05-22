@@ -1,11 +1,11 @@
-defmodule ArmNxPrimitives.EmbeddingsTest do
+defmodule NxPrimitives.EmbeddingsTest do
   use ExUnit.Case, async: true
 
   defp arm(t), do: Nx.backend_copy(t, NxArm.Backend)
 
   test "l2_normalize gives unit-norm rows" do
     t = Nx.tensor([[3.0, 4.0], [1.0, 0.0], [0.0, -5.0]])
-    normed = ArmNxPrimitives.Embeddings.l2_normalize(arm(t))
+    normed = NxPrimitives.Embeddings.l2_normalize(arm(t))
     rows = normed |> Nx.backend_copy(Nx.BinaryBackend) |> Nx.to_list()
     for row <- rows do
       norm = row |> Enum.map(&(&1 * &1)) |> Enum.sum() |> :math.sqrt()
@@ -21,12 +21,12 @@ defmodule ArmNxPrimitives.EmbeddingsTest do
       [0.0, 0.0, 1.0]
     ])
 
-    corpus_n = ArmNxPrimitives.Embeddings.l2_normalize(arm(corpus))
+    corpus_n = NxPrimitives.Embeddings.l2_normalize(arm(corpus))
 
     q = Nx.tensor([1.0, 1.0, 0.0])
-    q_n = ArmNxPrimitives.Embeddings.l2_normalize(arm(q))
+    q_n = NxPrimitives.Embeddings.l2_normalize(arm(q))
 
-    scores = ArmNxPrimitives.Embeddings.cosine_similarity(q_n, corpus_n)
+    scores = NxPrimitives.Embeddings.cosine_similarity(q_n, corpus_n)
     list = scores |> Nx.backend_copy(Nx.BinaryBackend) |> Nx.to_flat_list()
 
     # q == row 2 normalised → score 1.0
@@ -40,7 +40,7 @@ defmodule ArmNxPrimitives.EmbeddingsTest do
 
   test "top_k returns indices in descending score order" do
     scores = Nx.tensor([0.1, 0.9, 0.3, 0.7, 0.5, 0.2]) |> arm()
-    top3 = ArmNxPrimitives.Embeddings.top_k(scores, 3)
+    top3 = NxPrimitives.Embeddings.top_k(scores, 3)
     assert top3 == [1, 3, 4]
   end
 
@@ -50,15 +50,15 @@ defmodule ArmNxPrimitives.EmbeddingsTest do
       [0.1, 0.9, 0.0],
       [0.5, 0.5, 0.0],
       [0.0, 0.0, 1.0]
-    ]) |> arm() |> ArmNxPrimitives.Embeddings.l2_normalize()
+    ]) |> arm() |> NxPrimitives.Embeddings.l2_normalize()
 
     query =
       Nx.tensor([0.8, 0.2, 0.0])
       |> arm()
-      |> ArmNxPrimitives.Embeddings.l2_normalize()
+      |> NxPrimitives.Embeddings.l2_normalize()
 
-    scores = ArmNxPrimitives.Embeddings.cosine_similarity(query, docs)
-    top2 = ArmNxPrimitives.Embeddings.top_k(scores, 2)
+    scores = NxPrimitives.Embeddings.cosine_similarity(query, docs)
+    top2 = NxPrimitives.Embeddings.top_k(scores, 2)
 
     # Closest to the [0.9, 0.1, 0.0] direction are docs 0 then 2.
     assert top2 == [0, 2]

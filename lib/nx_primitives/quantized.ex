@@ -1,25 +1,29 @@
-defmodule ArmNxPrimitives.Quantized do
+defmodule NxPrimitives.Quantized do
   @moduledoc """
-  Quantized weight storage + matmul for ARM CPUs.
+  Quantized weight storage + matmul.
 
   This is the "weight-only int8" path used by llama.cpp Q8_0 and GPTQ-
   style quantization: weights stay int8 (4× memory savings vs f32),
   activations stay f32, the matmul dequantizes-and-accumulates in f32.
 
-  On Cortex-A73 (FP3+ / Pi 4) without SDOT this is the realistic int8
-  path; on ARMv8.2-A (Pi 5, newer Snapdragons) SDOT would let us run
-  the matmul fully in int with another 2–4× speedup — a future
-  feature gate.
+  > **Backend coupling**. The struct layout (`weights`, `scales`,
+  > `shape`) and matmul kernel currently target `arm_ai`'s NIF
+  > directly. A future backend with a different quantization layout
+  > (block-quant, per-tensor scale, SDOT-based int×int) would expose
+  > its own analogous module rather than slot into this one. See
+  > `NxPrimitives.Backend` for the abstraction we already have for
+  > FFT, which is the model to follow if you want to plug a second
+  > backend in here.
 
   ## Building quantized weights
 
       f32_weight = Nx.tensor(...)           # {N, K}
-      qw = ArmNxPrimitives.Quantized.from_f32(f32_weight)
-      # qw is %ArmNxPrimitives.Quantized{weights: <<...>>, scales: <<...>>, shape: {n, k}}
+      qw = NxPrimitives.Quantized.from_f32(f32_weight)
+      # qw is %NxPrimitives.Quantized{weights: <<...>>, scales: <<...>>, shape: {n, k}}
 
   ## Running matmul
 
-      out_f32 = ArmNxPrimitives.Quantized.matmul(qw, activations_f32)
+      out_f32 = NxPrimitives.Quantized.matmul(qw, activations_f32)
   """
 
   @enforce_keys [:weights, :scales, :shape]
@@ -36,7 +40,7 @@ defmodule ArmNxPrimitives.Quantized do
   output-channel) symmetric scales. `scale[i] = max(|row_i|) / 127`,
   `q[i, k] = clamp(round(w[i, k] / scale[i]), -128, 127)`.
 
-  Returns an `%ArmNxPrimitives.Quantized{}` carrying the raw int8 + scale bytes.
+  Returns an `%NxPrimitives.Quantized{}` carrying the raw int8 + scale bytes.
   """
   def from_f32(%Nx.Tensor{shape: {n, k}, type: {:f, 32}} = weights) do
     cpu = Nx.backend_copy(weights, Nx.BinaryBackend)
@@ -96,11 +100,6 @@ defmodule ArmNxPrimitives.Quantized do
 
     out_shape = List.to_tuple(lead ++ [n])
 
-    %Nx.Tensor{
-      shape: out_shape,
-      type: {:f, 32},
-      names: List.duplicate(nil, rank),
-      data: %NxArm.Backend{bin: out_bin}
-    }
+    Nx.from_binary(out_bin, :f32) |> Nx.reshape(out_shape)
   end
 end

@@ -1,4 +1,4 @@
-defmodule ArmNxPrimitives.QuantizedConv do
+defmodule NxPrimitives.QuantizedConv do
   @moduledoc """
   CPU-side 2-D convolution with int8-quantised weights and f32
   activations. The weights live in BEAM-managed memory as binaries; the

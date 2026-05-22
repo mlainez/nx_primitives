@@ -1,4 +1,4 @@
-defmodule ArmNxPrimitives.MmapTest do
+defmodule NxPrimitives.MmapTest do
   use ExUnit.Case, async: true
 
   @tmp_dir System.tmp_dir!()

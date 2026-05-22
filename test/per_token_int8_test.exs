@@ -1,4 +1,4 @@
-defmodule ArmNxPrimitives.PerTokenInt8Test do
+defmodule NxPrimitives.PerTokenInt8Test do
   use ExUnit.Case, async: true
 
   test "per-token quantize round-trip" do

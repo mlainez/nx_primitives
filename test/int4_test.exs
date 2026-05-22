@@ -1,4 +1,4 @@
-defmodule ArmNxPrimitives.Int4Test do
+defmodule NxPrimitives.Int4Test do
   use ExUnit.Case, async: true
 
   defp matmul_via_dequant(a, packed, scales, m, n, k) do

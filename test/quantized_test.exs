@@ -1,7 +1,7 @@
-defmodule ArmNxPrimitives.QuantizedTest do
+defmodule NxPrimitives.QuantizedTest do
   use ExUnit.Case, async: true
 
-  describe "ArmNxPrimitives.Quantized.from_f32 + matmul" do
+  describe "NxPrimitives.Quantized.from_f32 + matmul" do
     test "round-trips a known weight matrix within int8 tolerance" do
       # 4 output channels × 6 inputs, hand-crafted values that quantize
       # cleanly.
@@ -13,13 +13,13 @@ defmodule ArmNxPrimitives.QuantizedTest do
           [10.0, 20.0, 30.0, 40.0, 50.0, 60.0]
         ])
 
-      q = ArmNxPrimitives.Quantized.from_f32(w)
+      q = NxPrimitives.Quantized.from_f32(w)
 
       # Single-vector input.
       act = Nx.tensor([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
       ref = Nx.dot(act, Nx.transpose(w))
 
-      got = ArmNxPrimitives.Quantized.matmul(q, act) |> Nx.backend_copy(Nx.BinaryBackend)
+      got = NxPrimitives.Quantized.matmul(q, act) |> Nx.backend_copy(Nx.BinaryBackend)
 
       diff = Nx.subtract(got, ref) |> Nx.abs() |> Nx.reduce_max() |> Nx.to_number()
 
@@ -36,10 +36,10 @@ defmodule ArmNxPrimitives.QuantizedTest do
 
     test "matmul shape with batched activations" do
       w = Nx.iota({8, 16}, type: :f32) |> Nx.divide(10)
-      q = ArmNxPrimitives.Quantized.from_f32(w)
+      q = NxPrimitives.Quantized.from_f32(w)
 
       act = Nx.iota({1, 5, 16}, type: :f32) |> Nx.divide(10)
-      out = ArmNxPrimitives.Quantized.matmul(q, act)
+      out = NxPrimitives.Quantized.matmul(q, act)
 
       assert Nx.shape(out) == {1, 5, 8}
       assert Nx.type(out) == {:f, 32}
@@ -55,10 +55,10 @@ defmodule ArmNxPrimitives.QuantizedTest do
           [scale * -127, scale * 127, scale * 0, scale * 10]
         ])
 
-      q = ArmNxPrimitives.Quantized.from_f32(w)
+      q = NxPrimitives.Quantized.from_f32(w)
       act = Nx.tensor([1.0, 1.0, 1.0, 1.0])
       ref = Nx.dot(act, Nx.transpose(w))
-      got = ArmNxPrimitives.Quantized.matmul(q, act) |> Nx.backend_copy(Nx.BinaryBackend)
+      got = NxPrimitives.Quantized.matmul(q, act) |> Nx.backend_copy(Nx.BinaryBackend)
 
       diff = Nx.subtract(got, ref) |> Nx.abs() |> Nx.reduce_max() |> Nx.to_number()
       # round() to nearest at quantize time + f32 mul/sum at matmul

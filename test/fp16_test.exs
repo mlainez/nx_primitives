@@ -1,4 +1,4 @@
-defmodule ArmNxPrimitives.Fp16Test do
+defmodule NxPrimitives.Fp16Test do
   use ExUnit.Case, async: true
 
   describe "f32_to_f16_op" do
