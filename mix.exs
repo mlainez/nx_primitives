@@ -8,6 +8,7 @@ defmodule ArmNxPrimitives.MixProject do
       app: :arm_nx_primitives,
       version: @version,
       elixir: "~> 1.15",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       name: "ArmNxPrimitives",
@@ -19,6 +20,9 @@ defmodule ArmNxPrimitives.MixProject do
   end
 
   def application, do: [extra_applications: [:logger]]
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [
