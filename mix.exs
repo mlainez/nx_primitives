@@ -29,8 +29,8 @@ defmodule NxPrimitives.MixProject do
       {:nx, "~> 0.9"},
       # In tests we use ArmAI's NxPrimitives backend impl.
       # Production users wire their own backend via config.
-      {:arm_ai, path: "../arm_ai", only: [:dev, :test]},
-      {:nx_arm, path: "../nx_arm", only: [:dev, :test]},
+      {:arm_ai, github: "mlainez/arm_ai", only: [:dev, :test]},
+      {:nx_arm, github: "mlainez/nx_arm", only: [:dev, :test]},
       {:rustler, "~> 0.36", optional: true},
       {:rustler_precompiled, "~> 0.8"}
     ]
