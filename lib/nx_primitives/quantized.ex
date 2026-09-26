@@ -6,14 +6,9 @@ defmodule NxPrimitives.Quantized do
   style quantization: weights stay int8 (4× memory savings vs f32),
   activations stay f32, the matmul dequantizes-and-accumulates in f32.
 
-  > **Backend coupling**. The struct layout (`weights`, `scales`,
-  > `shape`) and matmul kernel currently target `arm_ai`'s NIF
-  > directly. A future backend with a different quantization layout
-  > (block-quant, per-tensor scale, SDOT-based int×int) would expose
-  > its own analogous module rather than slot into this one. See
-  > `NxPrimitives.Backend` for the abstraction we already have for
-  > FFT, which is the model to follow if you want to plug a second
-  > backend in here.
+  The struct layout (`weights`, `scales`, `shape`: per-row symmetric
+  int8) and the matmul kernel belong to the `arm_ai` NIF, which must be
+  in your deps along with `nx_arm`.
 
   ## Building quantized weights
 

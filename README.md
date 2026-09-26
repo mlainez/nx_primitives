@@ -5,28 +5,26 @@
 > This package was written for the **Goatmire Elixir workshop** on running
 > Nerves on Fairphone 3 hardware. It exists for tinkering and teaching.
 >
-> It is **not an actively maintained project** (yet). There are no
-> stability guarantees, APIs will change without notice, and parts of it
-> are wired-but-unproven. Treat it as a starting point to hack on, not as
-> a dependency to build a product on.
+> There are no stability guarantees and APIs will change without notice.
 >
 > See [`nerves_ai`](https://github.com/mlainez/nerves_ai) for the full
 > stack and the workshop context.
 
-Cross-platform Nx-tensor primitives with a pluggable native backend.
+Nx-tensor compute primitives for edge inference.
 
 Part of the [`nerves_ai`](https://github.com/mlainez/nerves_ai) edge-AI
-stack, but usable standalone — this package defines the generic API and
-carries no native code of its own.
+stack. This package carries no native code of its own. FFT goes through
+the pluggable `NxPrimitives.Backend`; the other modules call the
+[`arm_ai`](https://github.com/mlainez/arm_ai) NEON kernels directly.
 
 ## What's here
 
-| Module | What it does | Needs a backend? |
+| Module | What it does | Needs |
 |---|---|---|
-| `NxPrimitives.FFT` | Forward / inverse / real-input FFT | yes |
-| `NxPrimitives.Embeddings` | L2-normalise, cosine similarity, top-k | no — pure Nx |
-| `NxPrimitives.Quantized` | int8 weight-only matmul | yes |
-| `NxPrimitives.QuantizedConv` | int8 conv2d | yes |
+| `NxPrimitives.FFT` | Forward / inverse / real-input FFT | a configured backend |
+| `NxPrimitives.Embeddings` | L2-normalise, cosine similarity, top-k | `arm_ai` + `nx_arm` |
+| `NxPrimitives.Quantized` | int8 weight-only matmul | `arm_ai` + `nx_arm` |
+| `NxPrimitives.QuantizedConv` | int8 conv2d (NHWC) | `arm_ai` |
 
 ## Install
 
@@ -34,8 +32,9 @@ carries no native code of its own.
 defp deps do
   [
     {:nx_primitives, github: "mlainez/nx_primitives"},
-    # plus a backend — on ARM:
-    {:arm_ai, github: "mlainez/arm_ai"}
+    # the ARM backend and kernels:
+    {:arm_ai, github: "mlainez/arm_ai"},
+    {:nx_arm, github: "mlainez/nx_arm"}
   ]
 end
 ```
@@ -49,37 +48,31 @@ backend:
 config :nx_primitives, backend: ArmAI.NxPrimitivesBackend
 ```
 
-The canonical implementation today is `ArmAI.NxPrimitivesBackend`
-(NEON-tuned, via the `arm_ai` NIF). Alternative backends — CUDA, AVX,
-Metal — slot in by implementing the `NxPrimitives.Backend` behaviour and
-pointing that config key at them.
+The only implementation today is `ArmAI.NxPrimitivesBackend` (rustfft,
+via the `arm_ai` NIF). Other backends can implement the
+`NxPrimitives.Backend` behaviour and point that config key at them.
 
 If you depend on `nerves_ai`, this wiring happens for you at boot.
 
 ## Usage
 
 ```elixir
-# FFT (backend-dispatched)
+# FFT (backend-dispatched): 1-D f32 in, interleaved [re, im, ...] out
 spectrum = NxPrimitives.FFT.rfft(samples)
 
-# Embeddings — pure Nx, works on any backend including BinaryBackend
-query  = NxPrimitives.Embeddings.l2_normalize(query_vec)
-scores = NxPrimitives.Embeddings.cosine_similarity(query, corpus)
-{values, indices} = NxPrimitives.Embeddings.top_k(scores, 5)
+# Embeddings: corpus is {n, d}, query is {d}
+scores  = NxPrimitives.Embeddings.cosine_similarity(query, corpus)
+indices = NxPrimitives.Embeddings.top_k(scores, 5)   # list of row indices
 
 # int8 weight-only matmul
 q = NxPrimitives.Quantized.from_f32(weights)
 out = NxPrimitives.Quantized.matmul(q, activations)
 ```
 
-## Caveats
+## Toolchain
 
-`Embeddings` is pure Nx and needs no backend at all — it runs anywhere.
-
-`Quantized` and `QuantizedConv` are still coupled to `arm_ai` directly,
-because their storage layout is implementation-specific. The
-`NxPrimitives.Backend` behaviour does not yet abstract them; see each
-module's docs for the path to a backend-pluggable version.
+Built and tested with Erlang/OTP 29.1.1 and Elixir 1.20.4, matching the
+official Nerves systems (see `.tool-versions`).
 
 ## License
 

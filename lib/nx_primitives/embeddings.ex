@@ -9,10 +9,10 @@ defmodule NxPrimitives.Embeddings do
     3. At query time: encode → L2-normalise → cosine similarity
        against the corpus → top-k indices.
 
-  Cosine similarity collapses to a single GEMV under the hood (we
-  hand it to `gemm`), and `top_k` is O(n log k) via a min-heap in
-  Rust. The whole retrieval over 100k documents at d=384 fits well
-  under 100 ms on a Cortex-A73 cluster.
+  Cosine similarity is a single GEMV in the `arm_ai` NIF, and `top_k`
+  is O(n log k) via a min-heap in Rust. These functions call the NIF
+  directly and return `NxArm.Backend` tensors, so `arm_ai` and `nx_arm`
+  must be in your deps. Inputs are f32.
 
       # Index time (run once, persist `corpus_norm`):
       corpus = encode_docs(...)                        # {n, d} f32

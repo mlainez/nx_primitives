@@ -1,46 +1,20 @@
 defmodule NxPrimitives.QuantizedConv do
   @moduledoc """
-  CPU-side 2-D convolution with int8-quantised weights and f32
-  activations. The weights live in BEAM-managed memory as binaries; the
-  hot inner loop runs in a Rustler NIF (scalar today, NEON-vectorised
-  next).
-
-  Why this exists alongside the GPU stack:
-
-    * The direct-conv kernel we tried writing for Rusticl hangs the
-      a5xx IR3 shader compiler (see `project_nx_opencl_conv2d_blocked`),
-      so the f32-on-GPU conv path is currently blocked.
-    * Small CNN workloads (face unlock, person detection, wake-word with
-      mel features) are inherently latency-sensitive and inherently
-      small enough that CPU NEON int8 is competitive with — sometimes
-      better than — our current GPU pipeline.
-    * The same NIF works on every aarch64 Nerves target, not just the
-      Fairphone, since the algorithm is architecture-portable Rust and
-      the NEON intrinsics (when added) gate on `cfg(target_arch =
-      "aarch64")`.
+  2-D convolution with int8 per-output-channel quantized weights and
+  f32 activations, running in the `arm_ai` NIF.
 
   ## Format
 
-  Weights are quantised per output channel: for each output channel
+  Weights are quantized per output channel: for each output channel
   `co` (a row of the `[Cout, Kh*Kw*Cin]` weight matrix) we store
-  `Kh*Kw*Cin` signed bytes plus one f32 scale. Dequantising a single
+  `Kh*Kw*Cin` signed bytes plus one f32 scale. Dequantizing a single
   weight is `scale[co] * weight_i8[co, kh*Kw*Cin + kw*Cin + ci]`.
-
-  This matches `SmolLLM.Quantize`'s per-row scheme — the only
-  difference is the rows are output channels of a conv kernel instead
-  of rows of a linear matrix. Same `NXQ1` file format works for both.
 
   ## Building a `QuantizedConv` from an Axon / Bumblebee Conv2d kernel
 
-  Bumblebee / Axon stores the kernel in HWIO order, shape
-  `{Kh, Kw, Cin, Cout}`. To get to our layout:
-
-      kernel
-      |> Nx.transpose(axes: [3, 0, 1, 2])      # → {Cout, Kh, Kw, Cin}
-      |> Nx.reshape({cout, kh * kw * cin})     # → flat per-channel rows
-
-  Then `SmolLLM.Quantize.quantize_int8/1` produces the bytes + scales,
-  which feed `new/4`.
+  Axon stores the kernel in HWIO order, shape `{Kh, Kw, Cin, Cout}`.
+  Transpose it to `{Cout, Kh, Kw, Cin}`, then quantize each output
+  channel to int8 with its own scale before calling `new/4`.
 
   ## Convention
 
@@ -122,9 +96,7 @@ defmodule NxPrimitives.QuantizedConv do
     * `:padding`  — `:valid` (default), `:same`, or an explicit
       `[{pt, pb}, {pl, pr}]` list (matching Nx's convention)
 
-  Returns an `Nx.Tensor` on `Nx.BinaryBackend` (the NIF emits a
-  CPU-resident binary; callers can transfer to the GPU explicitly if
-  they want subsequent ops on the GPU).
+  Returns an `Nx.Tensor` on `Nx.BinaryBackend`.
   """
   @spec apply(Nx.Tensor.t(), t(), keyword()) :: Nx.Tensor.t()
   def apply(%Nx.Tensor{} = input, %__MODULE__{} = qc, opts \\ []) do
