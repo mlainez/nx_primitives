@@ -1,7 +1,7 @@
 defmodule NxPrimitives.Backend do
   @moduledoc """
-  Behaviour for `NxPrimitives` operations that require a native
-  compute backend (FFT, quantized matmul, int8 conv).
+  Behaviour for `NxPrimitives` operations that go through a
+  pluggable native backend. Today that is the FFT family.
 
   Each implementation maps the public Nx-tensor API to its own
   compute path. The canonical implementation today is
@@ -20,8 +20,9 @@ defmodule NxPrimitives.Backend do
 
   ## What's NOT in the behaviour
 
-  `NxPrimitives.Embeddings` is pure Nx (l2-normalise, cosine sim,
-  top-k). No backend needed — works wherever Nx works.
+  `NxPrimitives.Embeddings`, `NxPrimitives.Quantized` and
+  `NxPrimitives.QuantizedConv` call the `arm_ai` NIF directly, so they
+  need `arm_ai` (and `nx_arm`) in your deps.
   """
 
   @doc "Forward complex FFT. Interleaved `[re, im, ...]` in/out."
@@ -32,24 +33,6 @@ defmodule NxPrimitives.Backend do
 
   @doc "Real-input FFT. Length-N real in, `2*(N/2+1)` interleaved out."
   @callback rfft(Nx.Tensor.t()) :: Nx.Tensor.t()
-
-  @doc """
-  Quantized int8 matmul with f32 activations: `act × w^T (+ bias)`.
-
-    * `act` — `{M, K}` or `{B, M, K}` f32 tensor
-    * `weight_i8` — `{N, K}` int8 (raw binary or Nx tensor)
-    * `scales` — `{N}` f32, one per output row
-    * `bias` — `{N}` f32 or `nil`
-  """
-  @callback quantized_matmul(
-              Nx.Tensor.t(),
-              binary() | Nx.Tensor.t(),
-              Nx.Tensor.t(),
-              Nx.Tensor.t() | nil
-            ) :: Nx.Tensor.t()
-
-  @doc "int8 conv2d with f32 activations. See `NxPrimitives.QuantizedConv.conv2d/4`."
-  @callback quantized_conv2d(map()) :: Nx.Tensor.t()
 
   @doc """
   Return the configured backend module. Reads the `:backend`
