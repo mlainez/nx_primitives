@@ -7,13 +7,13 @@ defmodule NxPrimitives.MixProject do
     [
       app: :nx_primitives,
       version: @version,
-      elixir: "~> 1.15",
+      elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       name: "NxPrimitives",
       description:
-        "Cross-platform Nx-tensor primitives — FFT, embeddings (cosine sim / top-k), quantized matmul + conv — with a pluggable native backend (see `NxPrimitives.Backend`).",
+        "Nx-tensor primitives for edge inference — FFT (pluggable backend), embeddings (cosine sim / top-k), int8 quantized matmul + conv on the arm_ai NIF.",
       package: package(),
       docs: [main: "readme", extras: ["README.md"]]
     ]
@@ -21,18 +21,16 @@ defmodule NxPrimitives.MixProject do
 
   def application, do: [extra_applications: [:logger]]
 
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [
-      {:nx, "~> 0.9"},
-      # In tests we use ArmAI's NxPrimitives backend impl.
-      # Production users wire their own backend via config.
-      {:arm_ai, github: "mlainez/arm_ai", only: [:dev, :test]},
-      {:nx_arm, github: "mlainez/nx_arm", only: [:dev, :test]},
-      {:rustler, "~> 0.36", optional: true},
-      {:rustler_precompiled, "~> 0.8"}
+      {:nx, "~> 0.12.0"},
+      # Optional: Embeddings / Quantized / QuantizedConv call the arm_ai
+      # NIF directly, and ArmAI.NxPrimitivesBackend is the FFT backend.
+      {:arm_ai, github: "mlainez/arm_ai", optional: true},
+      {:nx_arm, github: "mlainez/nx_arm", optional: true}
     ]
   end
 
